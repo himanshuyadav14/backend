@@ -22,14 +22,58 @@ app.add_middleware(
 )
 
 class Pipeline(BaseModel):
-    nodes: list
-    edges: list
+    nodes: List[dict]
+    edges: List[dict]
 
 # Function to check if the graph is a DAG
-def checkDAG(nodes: list, edges: list) -> bool:
-    adj_list = {node['id']: [] for node in nodes}  # Construct adjacency list
+# def checkDAG(nodes: List[dict], edges: List[dict]) -> bool:
+#     adj_list = {node['id']: [] for node in nodes}  # Construct adjacency list
+#     for edge in edges:
+#         adj_list[edge['source']].append(edge['target'])
+
+#     visited = {node['id']: False for node in nodes}
+#     rec_stack = {node['id']: False for node in nodes}
+
+#     def dfs(node_id: str) -> bool:
+#         if rec_stack[node_id]:  # Cycle detected
+#             return True
+#         if visited[node_id]:  # Already processed
+#             return False
+
+#         visited[node_id] = True
+#         rec_stack[node_id] = True
+
+#         # Recurse through all neighbors (target nodes)
+#         for neighbor in adj_list[node_id]:
+#             if dfs(neighbor):
+#                 return True
+
+#         rec_stack[node_id] = False
+#         return False
+
+#     # Check for cycles starting from each node
+#     for node in nodes:
+#         if not visited[node['id']]:  # Only start DFS if not visited
+#             if dfs(node['id']):
+#                 return False  # Cycle found
+
+#     return True  # No cycle found, it's a DAG
+
+def checkDAG(nodes: List[dict], edges: List[dict]) -> bool:
+    # Construct adjacency list
+    adj_list = {node['id']: [] for node in nodes}
+    
+    # Add edges to adjacency list
     for edge in edges:
-        adj_list[edge['source']].append(edge['target'])
+        source = edge.get('source')
+        target = edge.get('target')
+        if source not in adj_list:
+            print(f"Warning: Source node {source} is not in the nodes list.")
+            continue  # Skip the edge
+        if target not in adj_list:
+            print(f"Warning: Target node {target} is not in the nodes list.")
+            continue  # Skip the edge
+        adj_list[source].append(target)
 
     visited = {node['id']: False for node in nodes}
     rec_stack = {node['id']: False for node in nodes}
@@ -59,43 +103,6 @@ def checkDAG(nodes: list, edges: list) -> bool:
 
     return True  # No cycle found, it's a DAG
 
-    # Create an adjacency list for the graph
-    adj_list = {node: [] for node in nodes}
-    for edge in edges:
-        src, dest = edge
-        adj_list[src].append(dest)
-
-    # Initialize visited arrays
-    visited = {node: False for node in nodes}
-    rec_stack = {node: False for node in nodes}  # To keep track of nodes in the current recursion stack
-
-    def dfs(node: str) -> bool:
-        # If the node is in the current recursion stack, a cycle is detected
-        if rec_stack[node]:
-            return True
-        # If the node is already visited, no need to visit again
-        if visited[node]:
-            return False
-        
-        # Mark the node as visited and part of the recursion stack
-        visited[node] = True
-        rec_stack[node] = True
-        
-        # Recurse for all the neighbors
-        for neighbor in adj_list[node]:
-            if dfs(neighbor):
-                return True
-        
-        rec_stack[node] = False
-        return False
-
-    for node in nodes:
-        if not visited[node]: 
-            if dfs(node):
-                return False
-
-    return True 
-
 # Root route
 @app.get('/')
 def read_root():
@@ -104,9 +111,6 @@ def read_root():
 # Route to parse the pipeline and check if it's a DAG
 @app.post('/pipelines/parse')
 async def parse_pipeline(pipeline: Pipeline):
-
-    print("Received nodes:", pipeline.nodes)
-    print("Received edges:", pipeline.edges)
 
     nodes = pipeline.nodes
     edges = pipeline.edges
